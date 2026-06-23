@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="A custom 2D board game powered by Babylon.js — play locally or online with a friend" />
+  <title>Chess-JS — Board Game</title>
+
+  <link rel="stylesheet" href="./style.css" />
+
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+
+  <!-- Configuration -->
+  <script src="./config.js" defer></script>
+
+  <!-- Logic Layer -->
+  <script src="./logic/utils/Alignment.js" defer></script>
+  <script src="./logic/utils/Coordinate.js" defer></script>
+  <script src="./logic/utils/HomeRowCalculator.js" defer></script>
+
+  <script src="./logic/army_unit/army_unit_type/movement/BishopPossibleMovesCalculator.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/movement/KingPossibleMovesCalculator.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/movement/KnightPossibleMovesCalculator.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/movement/LineMovementHelper.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/movement/PawnPossibleMovesCalculator.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/movement/QueenPossibleMovesCalculator.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/movement/RookPossibleMovesCalculator.js" defer></script>
+
+  <script src="./logic/army_unit/army_unit_type/ArmyUnitType.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/ArmyUnitTypeNames.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/BishopUnitType.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/KingUnitType.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/KnightUnitType.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/PawnUnitType.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/QueenUnitType.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/RookUnitType.js" defer></script>
+  <script src="./logic/army_unit/army_unit_type/UnitTypeLibrary.js" defer></script>
+
+  <script src="./logic/army_unit/ArmyUnit.js" defer></script>
+
+  <script src="./logic/Board.js" defer></script>
+  <script src="./logic/Cell.js" defer></script>
+  <script src="./logic/GameManager.js" defer></script>
+  <script src="./logic/GameState.js" defer></script>
+  <script src="./logic/Player.js" defer></script>
+
+  <!-- Content Generation -->
+  <script src="./content_generation/SampleBoardGenerator.js" defer></script>
+  <script src="./content_generation/SampleGameManagerGenerator.js" defer></script>
+  <script src="./content_generation/UnitTypeLibraryGenerator.js" defer></script>
+
+  <!-- Network Layer -->
+  <script src="./network/UnitIdRegistry.js" defer></script>
+  <script src="./network/NetworkClient.js" defer></script>
+
+  <!-- Graphics Layer -->
+  <script src="./graphics/ChessScene.js" defer></script>
+  <script src="./graphics/BoardRenderer.js" defer></script>
+  <script src="./graphics/PieceRenderer.js" defer></script>
+  <script src="./graphics/AnimationManager.js" defer></script>
+  <script src="./graphics/InputHandler.js" defer></script>
+  <script src="./graphics/UIOverlay.js" defer></script>
+  <script src="./graphics/LobbyUI.js" defer></script>
+
+  <!-- Main -->
+  <script src="./main.js" defer></script>
+</head>
+<body>
+
+  <!-- ── Lobby Overlay ─────────────────────────────────────────── -->
+  <div id="lobby-overlay">
+    <div id="lobby-panel">
+
+      <div class="lobby-title">
+        <span class="lobby-piece-icon">♔</span>
+        <h1>Chess</h1>
+        <span class="lobby-piece-icon">♛</span>
+      </div>
+
+      <!-- Mode Select -->
+      <div id="lobby-mode-select">
+        <button class="lobby-mode-btn" id="btn-local-game">
+          <span class="lobby-mode-icon">⚔</span>
+          <span class="lobby-mode-label">Local Game</span>
+          <span class="lobby-mode-sub">Play on this device</span>
+        </button>
+        <button class="lobby-mode-btn" id="btn-online-game">
+          <span class="lobby-mode-icon">⊕</span>
+          <span class="lobby-mode-label">Online Game</span>
+          <span class="lobby-mode-sub">Play with a friend</span>
+        </button>
+      </div>
+
+      <!-- Online Sub-Panel -->
+      <div id="lobby-online-panel" class="hidden">
+        <button class="lobby-primary-btn" id="btn-create-room">Create Game</button>
+        <div class="lobby-divider"><span>or join with a code</span></div>
+        <div class="lobby-join-row">
+          <input
+            id="room-code-input"
+            placeholder="ABCD"
+            maxlength="4"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button class="lobby-secondary-btn" id="btn-join-room">Join</button>
+        </div>
+        <button class="lobby-back-btn" id="btn-back-online">← Back</button>
+      </div>
+
+      <!-- Waiting for Opponent -->
+      <div id="lobby-waiting-panel" class="hidden">
+        <p class="lobby-waiting-label">Share this code with your friend:</p>
+        <div id="room-code-display">????</div>
+        <div class="lobby-spinner"></div>
+        <p class="lobby-waiting-sub">Waiting for opponent…</p>
+        <button class="lobby-back-btn" id="btn-cancel-wait">Cancel</button>
+      </div>
+
+      <!-- Connecting Spinner -->
+      <div id="lobby-connecting-panel" class="hidden">
+        <div class="lobby-spinner"></div>
+        <p class="lobby-waiting-sub">Connecting…</p>
+      </div>
+
+      <!-- Error -->
+      <div id="lobby-error-text" class="hidden lobby-error"></div>
+
+    </div>
+  </div>
+
+  <!-- ── Babylon.js Canvas ───────────────────────────────────────── -->
+  <canvas id="renderCanvas"></canvas>
+
+  <!-- ── UI Overlay (in-game HUD) ───────────────────────────────── -->
+  <div id="ui-overlay">
+
+    <div id="turn-indicator">
+      <div id="player-dot" class="player-dot white-dot"></div>
+      <div class="turn-info">
+        <span id="turn-text">White's Turn</span>
+        <span id="turn-number">Turn 1</span>
+      </div>
+    </div>
+
+    <div id="captured-panel">
+      <div class="captured-group">
+        <span class="captured-label">▲</span>
+        <div id="captured-black" class="captured-pieces"></div>
+      </div>
+      <div class="captured-group">
+        <span class="captured-label">▼</span>
+        <div id="captured-white" class="captured-pieces"></div>
+      </div>
+    </div>
+
+    <div id="game-over-panel" class="hidden">
+      <div id="game-over-text">White Wins!</div>
+      <button id="new-game-button">New Game</button>
+    </div>
+
+    <!-- Disconnect Overlay -->
+    <div id="disconnect-panel-overlay" class="hidden">
+      <div id="disconnect-inner">
+        <div class="disconnect-icon">📡</div>
+        <h3 class="disconnect-title">Opponent Disconnected</h3>
+        <p class="disconnect-sub">Waiting for them to reconnect…</p>
+        <div class="disconnect-timer-row">
+          <div class="lobby-spinner disconnect-spinner"></div>
+          <span id="disconnect-timer" class="disconnect-timer">60s</span>
+        </div>
+        <button id="btn-give-up" class="give-up-btn">Give Up</button>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
