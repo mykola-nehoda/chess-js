@@ -6,109 +6,80 @@ class SampleBoardGenerator {
 	
 	static COLUMN_COUNT = 8;
 
-	static execute( unitTypeLibrary ) {
+	static execute() {
 		const board = new Board(
 			SampleBoardGenerator.ROW_COUNT,
 			SampleBoardGenerator.COLUMN_COUNT,
 		);
 		
-		this.placeFirstPlayerUnits( board, unitTypeLibrary );
-		this.placeSecondPlayerUnits( board, unitTypeLibrary );
+		this.setCenterIncomes( board );
+		this.setAlignmentIncomes( board, Alignment.FirstPlayer );
+		this.setAlignmentIncomes( board, Alignment.SecondPlayer );
 		
 		return board;
 	}
 	
-	static placeRowOfUnits( board, row, unitTypeArray, alignment ) {
-		for ( let column = 0; column < unitTypeArray.length; ++column ) {
-			board.placeNewUnit(
-				new ArmyUnit( unitTypeArray[column], alignment ),
-				row,
-				column,
-			);
-		}
-	}
-	
-	static placeRowOfSameUnits( board, row, unitType, alignment ) {
-		for ( let column = 0; column < board.getColumnCount(); ++column ) {
-			board.placeNewUnit(
-				new ArmyUnit( unitType, alignment ),
-				row,
-				column,
-			);
-		}
-	}
-	
-	static placeFirstPlayerUnits( board, unitTypeLibrary ) {
-		
-		const pawnType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.PAWN_TYPE_NAME );
-		const knightType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.KNIGHT_TYPE_NAME );
-		const bishopType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.BISHOP_TYPE_NAME );
-		const rookType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.ROOK_TYPE_NAME );
-		const queenType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.QUEEN_TYPE_NAME );
-		const kingType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.KING_TYPE_NAME );
-		
-		const firstPlayerRow = 0;
-		
-		this.placeRowOfSameUnits(
+	static setCenterIncomes( board ) {
+		const CENTER = BoardRegionCalculator.getCenter( board );
+		this.setRectangleIncomes(
 			board,
-			firstPlayerRow + 1,
-			pawnType,
+			CENTER,
 			Alignment.FirstPlayer,
+			this.CENTER_CONTROL_POINT_INCOME
 		);
-		
-		const unitTypeArray = [
-			knightType,
-			kingType,
-			rookType,
-			knightType,
-			bishopType,
-			bishopType,
-			rookType,
-			queenType,
-		];
-		
-		this.placeRowOfUnits(
+		this.setRectangleIncomes(
 			board,
-			firstPlayerRow,
-			unitTypeArray,
-			Alignment.FirstPlayer,
+			CENTER,
+			Alignment.SecondPlayer,
+			this.CENTER_CONTROL_POINT_INCOME
 		);
 	}
 	
-	static placeSecondPlayerUnits( board, unitTypeLibrary ) {
+	static setRectangleIncomes(
+		board,
+		rectangle,
+		alignment,
+		newControlPointIncome,
+	) {
+		const leftCol  = rectangle.getLeftColumn();
+		const rightCol = rectangle.getRightColumn();
 		
-		const pawnType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.PAWN_TYPE_NAME );
-		const knightType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.KNIGHT_TYPE_NAME );
-		const bishopType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.BISHOP_TYPE_NAME );
-		const rookType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.ROOK_TYPE_NAME );
-		const queenType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.QUEEN_TYPE_NAME );
-		const kingType = unitTypeLibrary.getTypeByName( ArmyUnitTypeNames.KING_TYPE_NAME );
+		const bottomRow = rectangle.getBottomRow();
+		const topRow    = rectangle.getTopRow();
 		
-		const secondPlayerRow = ( SampleBoardGenerator.ROW_COUNT - 1 );
+		for ( let row = bottomRow; row <= topRow; ++row ) {
+			for ( let col = leftCol; col <= rightCol; ++col ) {
+				const cell = board.getCell( row, col );
+				cell.setControlPointIncome( alignment, newControlPointIncome );
+			}
+		}
+	}
+	
+	static setAlignmentIncomes( board, alignment ) {
+		const opponentAlignment = Alignment.getOpposite( alignment );
 
-		this.placeRowOfSameUnits(
+		const opponentTerritoryRectangle =
+			BoardRegionCalculator.getTerritoryRectangle( opponentAlignment, board );
+		this.setRectangleIncomes(
 			board,
-			secondPlayerRow - 1,
-			pawnType,
-			Alignment.SecondPlayer,
+			opponentTerritoryRectangle,
+			alignment,
+			this.TERRITORY_CONTROL_POINT_INCOME,
 		);
 		
-		const unitTypeArray = [
-			rookType,
-			rookType,
-			bishopType,
-			queenType,
-			knightType,
-			bishopType,
-			kingType,
-			knightType,
-		];
-		
-		this.placeRowOfUnits(
+		const opponentCitadelRectangle =
+			BoardRegionCalculator.getCitadelRectangle( opponentAlignment, board );
+		this.setRectangleIncomes(
 			board,
-			secondPlayerRow,
-			unitTypeArray,
-			Alignment.SecondPlayer,
+			opponentCitadelRectangle,
+			alignment,
+			this.CITADEL_CONTROL_POINT_INCOME,
 		);
 	}
+	
+	static CENTER_CONTROL_POINT_INCOME = 2;
+	
+	static TERRITORY_CONTROL_POINT_INCOME = 4;
+	
+	static CITADEL_CONTROL_POINT_INCOME = 6;
 }

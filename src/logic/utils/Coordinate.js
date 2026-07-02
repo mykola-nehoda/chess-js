@@ -1,5 +1,6 @@
 
 
+
 class Coordinate {
 	
 	constructor( row, column ) {
@@ -13,6 +14,11 @@ class Coordinate {
 	
 	getColumn() {
 		return this.column;
+	}
+	
+	isEven() {
+		const sum = this.row + this.column;
+		return ( ( sum & 1 ) === 0 );
 	}
 	
 	static areEqual( coordinate1, coordinate2 ) {

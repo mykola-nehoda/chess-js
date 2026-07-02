@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="description" content="A custom 2D board game powered by Babylon.js — play locally or online with a friend" />
-  <title>Chess-JS — Board Game</title>
+  <meta name="description" content="NotChess — a custom asymmetric board game with reserves, victory points, and deployment. Play locally or online." />
+  <title>NotChess — Strategic Board Game</title>
 
   <link rel="stylesheet" href="./style.css" />
 
@@ -13,11 +13,17 @@
   <!-- Configuration -->
   <script src="./config.js" defer></script>
 
-  <!-- Logic Layer -->
+  <!-- Logic Layer — utilities first -->
   <script src="./logic/utils/Alignment.js" defer></script>
   <script src="./logic/utils/Coordinate.js" defer></script>
   <script src="./logic/utils/HomeRowCalculator.js" defer></script>
+  <script src="./logic/utils/AlignmentDirectionCalculator.js" defer></script>
 
+  <!-- Regions (depend on Coordinate) -->
+  <script src="./logic/utils/regions/Rectangle.js" defer></script>
+  <script src="./logic/utils/regions/BoardRegionCalculator.js" defer></script>
+
+  <!-- Movement calculators (depend on BoardRegionCalculator + AlignmentDirectionCalculator) -->
   <script src="./logic/army_unit/army_unit_type/movement/BishopPossibleMovesCalculator.js" defer></script>
   <script src="./logic/army_unit/army_unit_type/movement/KingPossibleMovesCalculator.js" defer></script>
   <script src="./logic/army_unit/army_unit_type/movement/KnightPossibleMovesCalculator.js" defer></script>
@@ -26,6 +32,7 @@
   <script src="./logic/army_unit/army_unit_type/movement/QueenPossibleMovesCalculator.js" defer></script>
   <script src="./logic/army_unit/army_unit_type/movement/RookPossibleMovesCalculator.js" defer></script>
 
+  <!-- Unit types -->
   <script src="./logic/army_unit/army_unit_type/ArmyUnitType.js" defer></script>
   <script src="./logic/army_unit/army_unit_type/ArmyUnitTypeNames.js" defer></script>
   <script src="./logic/army_unit/army_unit_type/BishopUnitType.js" defer></script>
@@ -36,16 +43,25 @@
   <script src="./logic/army_unit/army_unit_type/RookUnitType.js" defer></script>
   <script src="./logic/army_unit/army_unit_type/UnitTypeLibrary.js" defer></script>
 
+  <!-- Army unit -->
   <script src="./logic/army_unit/ArmyUnit.js" defer></script>
 
+  <!-- Core game objects -->
   <script src="./logic/Board.js" defer></script>
   <script src="./logic/Cell.js" defer></script>
-  <script src="./logic/GameManager.js" defer></script>
-  <script src="./logic/GameState.js" defer></script>
   <script src="./logic/Player.js" defer></script>
+  <script src="./logic/GameState.js" defer></script>
+
+  <!-- Deploy calculator (depends on BoardRegionCalculator + Coordinate) -->
+  <script src="./logic/AvailableActions.js" defer></script>
+  <script src="./logic/AvailableDeploymentCalculator.js" defer></script>
+
+  <!-- Game manager -->
+  <script src="./logic/GameManager.js" defer></script>
 
   <!-- Content Generation -->
   <script src="./content_generation/SampleBoardGenerator.js" defer></script>
+  <script src="./content_generation/SampleGameStateGenerator.js" defer></script>
   <script src="./content_generation/SampleGameManagerGenerator.js" defer></script>
   <script src="./content_generation/UnitTypeLibraryGenerator.js" defer></script>
 
@@ -67,13 +83,13 @@
 </head>
 <body>
 
-  <!-- ── Lobby Overlay ─────────────────────────────────────────── -->
+  <!-- ── Lobby Overlay ──────────────────────────────────────────── -->
   <div id="lobby-overlay">
     <div id="lobby-panel">
 
       <div class="lobby-title">
         <span class="lobby-piece-icon">♔</span>
-        <h1>Chess</h1>
+        <h1>NotChess</h1>
         <span class="lobby-piece-icon">♛</span>
       </div>
 
@@ -89,6 +105,22 @@
           <span class="lobby-mode-label">Online Game</span>
           <span class="lobby-mode-sub">Play with a friend</span>
         </button>
+      </div>
+
+      <!-- Color & Handicap Panel -->
+      <div id="lobby-color-select" class="hidden">
+        <p class="lobby-waiting-label">Choose your color</p>
+        <div class="color-choice-row">
+          <button class="color-btn active" data-color="white" id="btn-color-white">♔ White</button>
+          <button class="color-btn" data-color="random" id="btn-color-random">🎲 Random</button>
+          <button class="color-btn" data-color="black" id="btn-color-black">♚ Black</button>
+        </div>
+        <label class="handicap-label">
+          <input type="checkbox" id="chk-handicap" />
+          <span>Queen handicap <span class="handicap-sub">(start without your queen)</span></span>
+        </label>
+        <button class="lobby-primary-btn" id="btn-start-with-options">Start Game</button>
+        <button class="lobby-back-btn" id="btn-back-color">← Back</button>
       </div>
 
       <!-- Online Sub-Panel -->
@@ -129,20 +161,48 @@
     </div>
   </div>
 
-  <!-- ── Babylon.js Canvas ───────────────────────────────────────── -->
+  <!-- ── Babylon.js Canvas ──────────────────────────────────────── -->
   <canvas id="renderCanvas"></canvas>
 
-  <!-- ── UI Overlay (in-game HUD) ───────────────────────────────── -->
+  <!-- ── UI Overlay (in-game HUD) ──────────────────────────────── -->
   <div id="ui-overlay">
 
-    <div id="turn-indicator">
-      <div id="player-dot" class="player-dot white-dot"></div>
-      <div class="turn-info">
-        <span id="turn-text">White's Turn</span>
-        <span id="turn-number">Turn 1</span>
+    <!-- Turn indicator + VP bar -->
+    <div id="hud-top">
+      <div id="vp-bar">
+        <div class="vp-group vp-white">
+          <span class="vp-icon">♔</span>
+          <span id="vp-white">0 VP</span>
+        </div>
+        <div class="vp-sep">vs</div>
+        <div class="vp-group vp-black">
+          <span id="vp-black">1 VP</span>
+          <span class="vp-icon">♚</span>
+        </div>
+      </div>
+
+      <div id="turn-indicator">
+        <div id="player-dot" class="player-dot white-dot"></div>
+        <div class="turn-info">
+          <span id="turn-text">White's Turn</span>
+          <span id="turn-number">Turn 1</span>
+        </div>
       </div>
     </div>
 
+    <!-- Reserve panel (below board) -->
+    <div id="reserve-panel">
+      <div class="reserve-side reserve-white">
+        <span class="reserve-label">♔ Reserve</span>
+        <div id="reserve-white" class="reserve-pieces"></div>
+      </div>
+      <div class="reserve-side reserve-black">
+        <span class="reserve-label">♚ Reserve</span>
+        <div id="reserve-black" class="reserve-pieces"></div>
+      </div>
+    </div>
+
+    <!-- Captured pieces (pawns / kings only) -->
     <div id="captured-panel">
       <div class="captured-group">
         <span class="captured-label">▲</span>

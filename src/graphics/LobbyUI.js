@@ -3,12 +3,18 @@ class LobbyUI {
 	constructor() {
 		this.overlay     = document.getElementById( "lobby-overlay" );
 		this.panelMode   = document.getElementById( "lobby-mode-select" );
+		this.panelColor  = document.getElementById( "lobby-color-select" );
 		this.panelOnline = document.getElementById( "lobby-online-panel" );
 		this.panelWait   = document.getElementById( "lobby-waiting-panel" );
 		this.panelConn   = document.getElementById( "lobby-connecting-panel" );
 		this.errorText   = document.getElementById( "lobby-error-text" );
 		this.codeDisplay = document.getElementById( "room-code-display" );
 		this.codeInput   = document.getElementById( "room-code-input" );
+
+		// Color / handicap state
+		this._selectedColor    = "white"; // "white" | "black" | "random"
+		this._handicapEnabled  = false;
+		this._pendingOnline    = false;   // true if color panel was opened for online game
 
 		// Callbacks set by app
 		this.onLocalGame  = null;
@@ -18,9 +24,24 @@ class LobbyUI {
 		this._setupEvents();
 	}
 
+	// ─── Public accessors ─────────────────────────────────────────
+
+	getSelectedColor() {
+		return this._selectedColor;
+	}
+
+	isHandicapEnabled() {
+		return this._handicapEnabled;
+	}
+
+	// ─── Event setup ──────────────────────────────────────────────
+
 	_setupEvents() {
+		// Main mode buttons
 		document.getElementById( "btn-local-game" ).addEventListener( "click", () => {
-			if ( this.onLocalGame ) this.onLocalGame();
+			this._pendingOnline = false;
+			this._showPanel( this.panelColor );
+			this.clearError();
 		});
 
 		document.getElementById( "btn-online-game" ).addEventListener( "click", () => {
@@ -28,6 +49,37 @@ class LobbyUI {
 			this.clearError();
 		});
 
+		// Color selector buttons
+		document.querySelectorAll( ".color-btn" ).forEach( ( btn ) => {
+			btn.addEventListener( "click", () => {
+				document.querySelectorAll( ".color-btn" ).forEach( ( b ) => b.classList.remove( "active" ) );
+				btn.classList.add( "active" );
+				this._selectedColor = btn.dataset.color;
+			});
+		});
+
+		// Handicap checkbox
+		const chkHandicap = document.getElementById( "chk-handicap" );
+		if ( chkHandicap ) {
+			chkHandicap.addEventListener( "change", () => {
+				this._handicapEnabled = chkHandicap.checked;
+			});
+		}
+
+		// Start with options (local game)
+		document.getElementById( "btn-start-with-options" ).addEventListener( "click", () => {
+			if ( !this._pendingOnline ) {
+				if ( this.onLocalGame ) this.onLocalGame();
+			}
+		});
+
+		// Back from color panel
+		document.getElementById( "btn-back-color" ).addEventListener( "click", () => {
+			this._showPanel( this.panelMode );
+			this.clearError();
+		});
+
+		// Online sub-panel
 		document.getElementById( "btn-create-room" ).addEventListener( "click", () => {
 			this.clearError();
 			if ( this.onCreateGame ) this.onCreateGame();
@@ -65,11 +117,14 @@ class LobbyUI {
 		});
 	}
 
+	// ─── Show / hide ──────────────────────────────────────────────
+
 	show() {
 		this.overlay.classList.remove( "hidden" );
 		this._showPanel( this.panelMode );
 		this.clearError();
 		this.codeInput.value = "";
+		this._resetColorPanel();
 	}
 
 	hide() {
@@ -97,16 +152,29 @@ class LobbyUI {
 		this.errorText.classList.add( "hidden" );
 	}
 
+	// ─── Internal helpers ─────────────────────────────────────────
+
 	_showPanel( panel ) {
 		const panels = [
 			this.panelMode,
+			this.panelColor,
 			this.panelOnline,
 			this.panelWait,
 			this.panelConn,
 		];
 		for ( const p of panels ) {
-			p.classList.add( "hidden" );
+			if ( p ) p.classList.add( "hidden" );
 		}
-		panel.classList.remove( "hidden" );
+		if ( panel ) panel.classList.remove( "hidden" );
+	}
+
+	_resetColorPanel() {
+		this._selectedColor   = "white";
+		this._handicapEnabled = false;
+		document.querySelectorAll( ".color-btn" ).forEach( ( b ) => b.classList.remove( "active" ) );
+		const whiteBtn = document.querySelector( ".color-btn[data-color='white']" );
+		if ( whiteBtn ) whiteBtn.classList.add( "active" );
+		const chkHandicap = document.getElementById( "chk-handicap" );
+		if ( chkHandicap ) chkHandicap.checked = false;
 	}
 }

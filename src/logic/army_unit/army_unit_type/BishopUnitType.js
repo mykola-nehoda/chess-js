@@ -20,4 +20,8 @@ class BishopUnitType extends ArmyUnitType {
 		);
 		return result;
 	}
+	
+	isColorBound() {
+		return true;
+	}
 }

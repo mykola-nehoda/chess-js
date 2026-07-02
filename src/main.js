@@ -20,7 +20,7 @@ class ChessApp {
 		this.isOnlineGame    = false;
 	}
 
-	// ─── Initialization ───────────────────────────────────────
+	// ─── Initialization ───────────────────────────────────────────
 
 	init() {
 		this.chessScene = new ChessScene( "renderCanvas" );
@@ -41,14 +41,38 @@ class ChessApp {
 		this.chessScene.startRenderLoop();
 	}
 
-	// ─── Lobby callbacks ──────────────────────────────────────
+	// ─── Lobby callbacks ──────────────────────────────────────────
 
 	_wireLobbyCallbacks() {
 		this.lobbyUI.onLocalGame = () => {
 			this.isOnlineGame = false;
 			this._disconnectNetwork();
 			this.lobbyUI.hide();
-			this.startNewGame( null );
+
+			// Resolve color and handicap from the lobby selection
+			const colorChoice     = this.lobbyUI.getSelectedColor();
+			const handicapEnabled = this.lobbyUI.isHandicapEnabled();
+
+			let viewAlignment;
+			if ( colorChoice === "white" ) {
+				viewAlignment = "First Player";
+			} else if ( colorChoice === "black" ) {
+				viewAlignment = "Second Player";
+			} else {
+				// Random
+				viewAlignment = Math.random() < 0.5 ? "First Player" : "Second Player";
+			}
+
+			// Handicap: the host (local chosen color) gives up their queen
+			let handicapAlignment = null;
+			if ( handicapEnabled ) {
+				handicapAlignment =
+					( viewAlignment === "First Player" )
+					? Alignment.FirstPlayer
+					: Alignment.SecondPlayer;
+			}
+
+			this.startNewGame( null, handicapAlignment );
 		};
 
 		this.lobbyUI.onCreateGame = async () => {
@@ -100,10 +124,6 @@ class ChessApp {
 			if ( this.networkClient ) {
 				this.networkClient.giveUp();
 			}
-			// Local player gave up — opponent wins, local player loses
-			const gameState = this.gameManager.getGameState();
-			const activeAlignment = gameState.getActivePlayerAlignment();
-			// Give win to the player who did NOT give up (the local player's opponent)
 			const localAlignment = this.networkClient ? this.networkClient.myAlignment : null;
 			const winnerAlignment = localAlignment === "First Player"
 				? Alignment.SecondPlayer
@@ -115,11 +135,10 @@ class ChessApp {
 		};
 	}
 
-	// ─── Game Lifecycle ───────────────────────────────────────
+	// ─── Game Lifecycle ───────────────────────────────────────────
 
-	startNewGame( localAlignment ) {
+	startNewGame( localAlignment, handicapAlignment = null ) {
 		// Orient the board: always put the local player's pieces at the bottom.
-		// Local game defaults to white's view (row 0 at bottom).
 		const viewAlignment = localAlignment !== null ? localAlignment : "First Player";
 		this.chessScene.setCameraForAlignment( viewAlignment );
 
@@ -133,10 +152,20 @@ class ChessApp {
 		this.boardRenderer.clearLastMoveHighlights();
 
 		this.unitTypeLibrary = UnitTypeLibraryGenerator.execute();
-		this.gameManager     = SampleGameManagerGenerator.execute( this.unitTypeLibrary );
+
+		// Build game state (includes new starting position, reserves, and Black's 1 VP head-start)
+		const gameState = SampleGameStateGenerator.execute( this.unitTypeLibrary, handicapAlignment );
+		this.gameManager = SampleGameManagerGenerator.execute( this.unitTypeLibrary, gameState );
+
+		// Draw VP flags on board squares (called once per game)
+		this.boardRenderer.createCPFlags( gameState.getBoard() );
 
 		this._spawnAllPieces();
 		this.uiOverlay.reset();
+
+		// Initialize reserve display and VP
+		this.uiOverlay.updateReserve( gameState );
+		this.uiOverlay.updateVictoryPoints( gameState );
 
 		// Register unit IDs for network play
 		if ( localAlignment !== null ) {
@@ -185,7 +214,7 @@ class ChessApp {
 		}
 	}
 
-	// ─── Network Game Event Wiring ────────────────────────────
+	// ─── Network Game Event Wiring ────────────────────────────────
 
 	_wireNetworkGameEvents() {
 		if ( !this.networkClient ) return;
@@ -220,17 +249,15 @@ class ChessApp {
 		};
 
 		this.networkClient.onConnectionLost = () => {
-			// Our own connection dropped — auto-reconnect is handled inside NetworkClient
-			// Show a subtle status update (no action needed from player)
+			// Auto-reconnect is handled inside NetworkClient
 		};
 
 		this.networkClient.onReconnected = () => {
-			// We reconnected — opponent sees "opponent-reconnected"
-			// No UI change needed on our side (disconnect panel wasn't shown)
+			// No UI change needed on our side
 		};
 	}
 
-	// ─── Network helpers ──────────────────────────────────────
+	// ─── Network helpers ──────────────────────────────────────────
 
 	async _connectNetwork() {
 		this._disconnectNetwork();

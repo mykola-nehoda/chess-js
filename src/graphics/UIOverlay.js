@@ -7,10 +7,20 @@ class UIOverlay {
 		this.gameOverPanel  = document.getElementById( "game-over-panel" );
 		this.gameOverText   = document.getElementById( "game-over-text" );
 		this.newGameButton  = document.getElementById( "new-game-button" );
-		this.capturedWhite  = document.getElementById( "captured-white" );
-		this.capturedBlack  = document.getElementById( "captured-black" );
 		this.disconnectPanel = document.getElementById( "disconnect-panel-overlay" );
 		this.disconnectTimer = document.getElementById( "disconnect-timer" );
+
+		// Reserve panels
+		this.reserveWhite   = document.getElementById( "reserve-white" );
+		this.reserveBlack   = document.getElementById( "reserve-black" );
+
+		// Victory point elements
+		this.vpWhite        = document.getElementById( "vp-white" );
+		this.vpBlack        = document.getElementById( "vp-black" );
+
+		// Captured pieces (for pawns/kings that don't go to reserve)
+		this.capturedWhite  = document.getElementById( "captured-white" );
+		this.capturedBlack  = document.getElementById( "captured-black" );
 
 		this.capturedPieces = { white: [], black: [] };
 
@@ -22,9 +32,12 @@ class UIOverlay {
 		this.pieceSymbols[ ArmyUnitTypeNames.KNIGHT_TYPE_NAME ] = { white: "\u2658", black: "\u265E" };
 		this.pieceSymbols[ ArmyUnitTypeNames.PAWN_TYPE_NAME ]   = { white: "\u2659", black: "\u265F" };
 
-		this.onNewGame = null;
-		this.onGiveUp  = null;
+		this.onNewGame  = null;
+		this.onGiveUp   = null;
+		this.onReservePieceClick = null;
+
 		this._disconnectCountdown = null;
+		this._selectedReserveEl   = null;
 
 		this._setupButtons();
 	}
@@ -39,6 +52,8 @@ class UIOverlay {
 		});
 	}
 
+	// ─── Turn indicator ───────────────────────────────────────────
+
 	updateTurnIndicator( alignment, turnNumber ) {
 		const isFirst = ( alignment === Alignment.FirstPlayer );
 		this.turnText.textContent   = isFirst ? "White's Turn" : "Black's Turn";
@@ -46,18 +61,112 @@ class UIOverlay {
 		this.playerDot.className    = "player-dot " + ( isFirst ? "white-dot" : "black-dot" );
 	}
 
-	showGameOver( winnerAlignment ) {
-		const isFirst = ( winnerAlignment === Alignment.FirstPlayer );
-		this.gameOverText.textContent = ( isFirst ? "White" : "Black" ) + " Wins!";
-		this.gameOverPanel.classList.remove( "hidden" );
-		this.gameOverPanel.classList.add( "show" );
+	// ─── Victory Points ───────────────────────────────────────────
+
+	updateVictoryPoints( gameState ) {
+		const firstPlayer  = gameState.getPlayer( Alignment.FirstPlayer );
+		const secondPlayer = gameState.getPlayer( Alignment.SecondPlayer );
+		if ( this.vpWhite ) this.vpWhite.textContent = firstPlayer.getControlPoints() + " VP";
+		if ( this.vpBlack ) this.vpBlack.textContent = secondPlayer.getControlPoints() + " VP";
 	}
 
+	// ─── Reserve Panels ───────────────────────────────────────────
+
+	updateReserve( gameState ) {
+		const firstPlayer  = gameState.getPlayer( Alignment.FirstPlayer );
+		const secondPlayer = gameState.getPlayer( Alignment.SecondPlayer );
+		const activeAlign  = gameState.getActivePlayerAlignment();
+
+		this._renderReserveSide(
+			this.reserveWhite,
+			firstPlayer,
+			Alignment.FirstPlayer,
+			activeAlign,
+		);
+		this._renderReserveSide(
+			this.reserveBlack,
+			secondPlayer,
+			Alignment.SecondPlayer,
+			activeAlign,
+		);
+	}
+
+	_renderReserveSide( container, player, alignment, activeAlignment ) {
+		container.textContent = "";
+		const reserveSize = player.getReserveSize();
+		const isActive    = ( alignment === activeAlignment );
+
+		if ( reserveSize === 0 ) {
+			const empty = document.createElement( "span" );
+			empty.className   = "reserve-empty";
+			empty.textContent = "—";
+			container.appendChild( empty );
+			return;
+		}
+
+		for ( let i = 0; i < reserveSize; ++i ) {
+			const unit     = player.getUnitFromReserveByIndex( i );
+			const typeName = unit.getType().getName();
+			const symbols  = this.pieceSymbols[ typeName ];
+			if ( !symbols ) continue;
+
+			const isFirst = ( alignment === Alignment.FirstPlayer );
+			const symbol  = isFirst ? symbols.white : symbols.black;
+
+			const btn = document.createElement( "button" );
+			btn.className   = "reserve-piece" + ( isActive ? " reserve-piece-active" : "" );
+			btn.textContent = symbol;
+			btn.title       = typeName.charAt(0).toUpperCase() + typeName.slice(1);
+			btn.dataset.idx = String( i );
+
+			if ( isActive ) {
+				btn.addEventListener( "click", ( e ) => {
+					e.stopPropagation();
+					if ( this.onReservePieceClick ) {
+						this.onReservePieceClick( unit );
+					}
+				});
+			}
+
+			container.appendChild( btn );
+		}
+	}
+
+	highlightReserveUnit( unit ) {
+		this.clearReserveHighlight();
+
+		// Find the button element for this unit across both panels
+		const allBtns = document.querySelectorAll( ".reserve-piece" );
+		allBtns.forEach( ( btn ) => {
+			// We identify by position in the parent — match via closure in _renderReserveSide
+			// The simplest reliable way: store a reference when building
+		});
+		// Reserve buttons are rebuilt on every updateReserve, so we mark the selected unit
+		// on the container for CSS targeting via a data attribute
+		if ( unit.getAlignment() === Alignment.FirstPlayer ) {
+			if ( this.reserveWhite ) this.reserveWhite.dataset.selectedIdx = "";
+		} else {
+			if ( this.reserveBlack ) this.reserveBlack.dataset.selectedIdx = "";
+		}
+	}
+
+	clearReserveHighlight() {
+		document.querySelectorAll( ".reserve-piece.reserve-piece-selected" ).forEach( ( el ) => {
+			el.classList.remove( "reserve-piece-selected" );
+		});
+	}
+
+	// ─── Captured pieces (pawns / kings) ─────────────────────────
+
 	addCapturedPiece( unit ) {
-		const typeName  = unit.getType().getName();
-		const isFirst   = ( unit.getAlignment() === Alignment.FirstPlayer );
-		const key       = isFirst ? "white" : "black";
-		const symbols   = this.pieceSymbols[ typeName ];
+		// Only show truly non-redeployable pieces (pawns and kings)
+		if ( unit.getType().canBeRedeployed() ) return;
+		if ( unit.isPromoted() ) return; // promoted queens also get captured but skip reserve
+
+		const typeName = unit.getType().getName();
+		const isFirst  = ( unit.getAlignment() === Alignment.FirstPlayer );
+		const key      = isFirst ? "white" : "black";
+		const symbols  = this.pieceSymbols[ typeName ];
 		if ( !symbols ) return;
 
 		if ( isFirst ) {
@@ -79,7 +188,16 @@ class UIOverlay {
 		}
 	}
 
-	// ─── Disconnect Panel ─────────────────────────────────────
+	// ─── Game Over ────────────────────────────────────────────────
+
+	showGameOver( winnerAlignment ) {
+		const isFirst = ( winnerAlignment === Alignment.FirstPlayer );
+		this.gameOverText.textContent = ( isFirst ? "White" : "Black" ) + " Wins!";
+		this.gameOverPanel.classList.remove( "hidden" );
+		this.gameOverPanel.classList.add( "show" );
+	}
+
+	// ─── Disconnect Panel ─────────────────────────────────────────
 
 	showDisconnected( timeoutSeconds = 60 ) {
 		this.disconnectPanel.classList.remove( "hidden" );
@@ -110,15 +228,20 @@ class UIOverlay {
 		}
 	}
 
-	// ─── Reset ───────────────────────────────────────────────
+	// ─── Reset ───────────────────────────────────────────────────
 
 	reset() {
 		this.capturedPieces = { white: [], black: [] };
-		this.capturedWhite.textContent = "";
-		this.capturedBlack.textContent = "";
+		if ( this.capturedWhite ) this.capturedWhite.textContent = "";
+		if ( this.capturedBlack ) this.capturedBlack.textContent = "";
+		if ( this.reserveWhite )  this.reserveWhite.textContent  = "";
+		if ( this.reserveBlack )  this.reserveBlack.textContent  = "";
+		if ( this.vpWhite )       this.vpWhite.textContent       = "0 VP";
+		if ( this.vpBlack )       this.vpBlack.textContent       = "1 VP";
 		this.gameOverPanel.classList.add( "hidden" );
 		this.gameOverPanel.classList.remove( "show" );
 		this.hideDisconnected();
 		this.updateTurnIndicator( Alignment.FirstPlayer, 1 );
+		this._selectedReserveEl = null;
 	}
 }

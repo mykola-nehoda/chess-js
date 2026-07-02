@@ -1,6 +1,5 @@
 
 
-
 class ArmyUnitType {
 	getName() {
 		throw new Error();
@@ -19,6 +18,22 @@ class ArmyUnitType {
 	}
 	
 	isGameCritical() {
+		return false;
+	}
+	
+	canBeRedeployed() {
+		return true;
+	}
+	
+	canCollectControlPoints() {
+		return true;
+	}
+	
+	canStopDoubleMove() {
+		return false;
+	}
+	
+	isColorBound() {
 		return false;
 	}
 }

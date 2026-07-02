@@ -1,23 +1,10 @@
 
 
-
 class PawnPossibleMovesCalculator {
-	static getMoveDirection( alignment ) {
-		switch( alignment )
-		{
-			case Alignment.FirstPlayer:
-				return 1;
-			case Alignment.SecondPlayer:
-				return -1;
-			default:
-				throw new Error();
-		}
-	}
-	
 	static getRowForDoubleMove( board, alignment ) {
 		return (
-				HomeRowCalculator.execute( alignment, board )
-			+	this.getMoveDirection( alignment )
+				BoardRegionCalculator.getHomeRow( alignment, board )
+			+	AlignmentDirectionCalculator.execute( alignment )
 		);
 	}
 	
@@ -28,17 +15,28 @@ class PawnPossibleMovesCalculator {
 		targetSet,
 	) {
 		const alignment = board.getCell( startRow, startCol ).getUnit().getAlignment();
-		const moveDirection = this.getMoveDirection( alignment );
+		const moveDirection = AlignmentDirectionCalculator.execute( alignment );
 		
 		this.tryCapture( board, startRow + moveDirection, startCol - 1, alignment, targetSet );
 		this.tryCapture( board, startRow + moveDirection, startCol + 1, alignment, targetSet );
 		
 		const canMoveOnce = this.tryMove( board, startRow + moveDirection, startCol, targetSet );
-		if ( !canMoveOnce )
+		if ( !canMoveOnce ) {
+			// Center-column pawns can capture forward vertically when blocked
+			if ( BoardRegionCalculator.isCenterCol( board, startCol ) ) {
+				this.tryCapture( board, startRow + moveDirection, startCol, alignment, targetSet );
+			}
 			return;
+		}
 
 		if ( startRow === this.getRowForDoubleMove( board, alignment ) ) {
-			this.tryMove( board, startRow + ( 2 * moveDirection ), startCol, targetSet );
+			const doubleMoveRow = startRow + ( 2 * moveDirection );
+			if (
+					!this.checkForDoubleMoveStopper( board, doubleMoveRow, startCol - 1 )
+				&&	!this.checkForDoubleMoveStopper( board, doubleMoveRow, startCol + 1 )
+			) {
+				this.tryMove( board, doubleMoveRow, startCol, targetSet );
+			}
 		}
 	}
 	
@@ -73,5 +71,19 @@ class PawnPossibleMovesCalculator {
 			return false;
 		targetSet.add( new Coordinate( row, col ) );
 		return true;
+	}
+	
+	static checkForDoubleMoveStopper(
+		board,
+		row,
+		col,
+	) {
+		if ( !board.isWithin( row, col ) )
+			return false;
+		const cell = board.getCell( row, col );
+		if ( !cell.containsUnit() )
+			return false;
+		const metUnit = cell.getUnit();
+		return metUnit.getType().canStopDoubleMove();
 	}
 }

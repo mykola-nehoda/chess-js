@@ -10,5 +10,5 @@
 // For local testing use: ws://localhost:8765
 
 const GameConfig = {
-	SERVER_URL: "ws://chess.nehoda.site:8765",
+	SERVER_URL: "ws://localhost:8765",
 };

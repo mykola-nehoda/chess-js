@@ -1,15 +1,16 @@
 
 class InputHandler {
 	constructor( scene, boardRenderer, pieceRenderer, gameManager, animationManager, uiOverlay ) {
-		this.scene = scene;
-		this.boardRenderer = boardRenderer;
-		this.pieceRenderer = pieceRenderer;
-		this.gameManager = gameManager;
+		this.scene          = scene;
+		this.boardRenderer  = boardRenderer;
+		this.pieceRenderer  = pieceRenderer;
+		this.gameManager    = gameManager;
 		this.animationManager = animationManager;
-		this.uiOverlay = uiOverlay;
+		this.uiOverlay      = uiOverlay;
 
-		this.selectedUnit = null;
-		this.validMoves = [];
+		this.selectedUnit        = null;   // board unit selected for move
+		this.selectedReserveUnit = null;   // reserve unit selected for deploy
+		this.validMoves          = [];     // {row, col} destinations
 
 		// Network — set externally for online games, null for local
 		this.localAlignment = null;
@@ -18,6 +19,11 @@ class InputHandler {
 
 		this._pointerObserver = null;
 		this.setupPointerHandler();
+
+		// Wire reserve clicks from UIOverlay
+		this.uiOverlay.onReservePieceClick = ( unit ) => {
+			this.handleReservePiecePick( unit );
+		};
 	}
 
 	setupPointerHandler() {
@@ -35,7 +41,7 @@ class InputHandler {
 		}
 	}
 
-	// ─── Pick handling ────────────────────────────────────────
+	// ─── Pick handling ────────────────────────────────────────────
 
 	handlePick( pointerInfo ) {
 		if ( this.animationManager.getIsAnimating() ) return;
@@ -49,7 +55,7 @@ class InputHandler {
 			return;
 		}
 
-		const pickResult = pointerInfo.pickInfo;
+		const pickResult  = pointerInfo.pickInfo;
 		if ( !pickResult.hit ) { this.deselect(); return; }
 
 		const pickedMesh = pickResult.pickedMesh;
@@ -86,8 +92,20 @@ class InputHandler {
 		if ( unit.getAlignment() === activeAlignment ) {
 			this.selectUnit( unit );
 		} else if ( this.selectedUnit ) {
+			// Picking an enemy unit while a friendly is selected = capture attempt
 			this.handleSquarePick( row, col );
 		}
+	}
+
+	handleReservePiecePick( unit ) {
+		const activeAlignment = this.gameManager.getGameState().getActivePlayerAlignment();
+		if ( unit.getAlignment() !== activeAlignment ) return;
+		if ( this.gameManager.getGameState().isWinnerDecided() ) return;
+
+		this.deselect();
+		this.selectedReserveUnit = unit;
+		this.uiOverlay.highlightReserveUnit( unit );
+		this.showDeploymentSquares( unit );
 	}
 
 	selectUnit( unit ) {
@@ -102,13 +120,11 @@ class InputHandler {
 	}
 
 	showValidMoves( unit ) {
-		const possibleMoves = this.gameManager.unitPossibleMoves.get( unit );
-		if ( !possibleMoves ) return;
-
-		const board = this.gameManager.getGameState().getBoard();
+		const movesIter = this.gameManager.getAvailableMovesForUnit( unit );
+		const board     = this.gameManager.getGameState().getBoard();
 		this.validMoves = [];
 
-		for ( const move of possibleMoves ) {
+		for ( const move of movesIter ) {
 			const row = move.getRow();
 			const col = move.getColumn();
 			const isCapture = board.getCell( row, col ).containsUnit();
@@ -118,25 +134,43 @@ class InputHandler {
 		}
 	}
 
-	handleSquarePick( row, col ) {
-		if ( !this.selectedUnit ) return;
+	showDeploymentSquares( unit ) {
+		const deplIter = this.gameManager.getAvailableDeploymentsForUnit( unit );
+		this.validMoves = [];
 
-		const isValid = this.validMoves.some( ( m ) => m.row === row && m.col === col );
-		if ( !isValid ) { this.deselect(); return; }
-
-		this.executeMove( this.selectedUnit, row, col );
+		for ( const coord of deplIter ) {
+			const row = coord.getRow();
+			const col = coord.getColumn();
+			this.boardRenderer.highlightDeploySquare( row, col );
+			this.validMoves.push( { row, col } );
+		}
 	}
 
-	// ─── Move execution ───────────────────────────────────────
+	handleSquarePick( row, col ) {
+		const isValid = this.validMoves.some( ( m ) => m.row === row && m.col === col );
 
-	// Called for the local player's move.
+		if ( this.selectedReserveUnit ) {
+			if ( !isValid ) { this.deselect(); return; }
+			this.executeDeploy( this.selectedReserveUnit, row, col );
+			return;
+		}
+
+		if ( this.selectedUnit ) {
+			if ( !isValid ) { this.deselect(); return; }
+			this.executeMove( this.selectedUnit, row, col );
+			return;
+		}
+	}
+
+	// ─── Move execution ───────────────────────────────────────────
+
 	async executeMove( unit, destRow, destCol ) {
-		this.selectedUnit = null;
-		this.validMoves   = [];
+		this.selectedUnit        = null;
+		this.selectedReserveUnit = null;
+		this.validMoves          = [];
 		await this._runMoveSequence( unit, destRow, destCol, true );
 	}
 
-	// Called when a move arrives from the opponent over the network.
 	async applyRemoteMove( unitId, destRow, destCol ) {
 		if ( !this.unitRegistry ) return;
 		const unit = this.unitRegistry.getUnit( unitId );
@@ -147,7 +181,6 @@ class InputHandler {
 		await this._runMoveSequence( unit, destRow, destCol, false );
 	}
 
-	// Shared move sequence (local + remote).
 	async _runMoveSequence( unit, destRow, destCol, isLocal ) {
 		const board      = this.gameManager.getGameState().getBoard();
 		const startCoord = board.getCoordinateOfUnit( unit );
@@ -159,7 +192,7 @@ class InputHandler {
 
 		const wasPawn    = unit.getType().canBePromoted();
 		const oppAlign   = Alignment.getOpposite( unit.getAlignment() );
-		const homeRow    = HomeRowCalculator.execute( oppAlign, board );
+		const homeRow    = BoardRegionCalculator.getHomeRow( oppAlign, board );
 		const willPromote = wasPawn && ( destRow === homeRow );
 
 		this.boardRenderer.clearHighlights();
@@ -180,7 +213,6 @@ class InputHandler {
 			}
 			this.pieceRenderer.unitToMeshMap.delete( capturedUnit );
 			this.pieceRenderer.meshToUnitMap.delete( capturedMesh );
-			this.uiOverlay.addCapturedPiece( capturedUnit );
 		}
 
 		this.gameManager.executeMove( unit, destRow, destCol );
@@ -191,7 +223,6 @@ class InputHandler {
 		if ( willPromote ) {
 			this._handlePromotionVisual( unit, destRow, destCol );
 
-			// Transfer registry ID from pawn to the new queen
 			if ( this.unitRegistry ) {
 				const newCell = this.gameManager.getGameState().getBoard().getCell( destRow, destCol );
 				if ( newCell.containsUnit() ) {
@@ -202,8 +233,44 @@ class InputHandler {
 		}
 
 		this.syncBoardState();
+		this._afterAction();
+	}
 
+	// ─── Deploy execution ─────────────────────────────────────────
+
+	async executeDeploy( unit, destRow, destCol ) {
+		this.selectedUnit        = null;
+		this.selectedReserveUnit = null;
+		this.validMoves          = [];
+		await this._runDeploySequence( unit, destRow, destCol );
+	}
+
+	async _runDeploySequence( unit, destRow, destCol ) {
+		this.boardRenderer.clearHighlights();
+
+		// Execute the logic (removes from reserve, places on board, sets weakness)
+		this.gameManager.executeDeploy( unit, destRow, destCol );
+
+		// Create visual mesh for the newly placed piece
+		const mesh = this.pieceRenderer.createPieceForUnit( unit, destRow, destCol );
+		if ( mesh ) {
+			this.animationManager.animatePromotion( mesh ); // spawn scale-up animation
+		}
+
+		this.boardRenderer.highlightLastMove( destRow, destCol, destRow, destCol );
+
+		this.syncBoardState();
+		this._afterAction();
+	}
+
+	// ─── Post-action sync ─────────────────────────────────────────
+
+	_afterAction() {
 		const gameState = this.gameManager.getGameState();
+		this.pieceRenderer.updateWeaknessCounters( gameState.getBoard() );
+		this.uiOverlay.updateReserve( gameState );
+		this.uiOverlay.updateVictoryPoints( gameState );
+
 		if ( gameState.isWinnerDecided() ) {
 			this.uiOverlay.showGameOver( gameState.getWinner().getAlignment() );
 		} else {
@@ -213,6 +280,8 @@ class InputHandler {
 			);
 		}
 	}
+
+	// ─── Promotion ────────────────────────────────────────────────
 
 	_handlePromotionVisual( originalUnit, row, col ) {
 		const oldMesh = this.pieceRenderer.getMeshForUnit( originalUnit );
@@ -230,6 +299,8 @@ class InputHandler {
 			if ( newMesh ) this.animationManager.animatePromotion( newMesh );
 		}
 	}
+
+	// ─── Board sync ───────────────────────────────────────────────
 
 	syncBoardState() {
 		const board       = this.gameManager.getGameState().getBoard();
@@ -255,9 +326,11 @@ class InputHandler {
 	}
 
 	deselect() {
-		this.selectedUnit = null;
-		this.validMoves   = [];
+		this.selectedUnit        = null;
+		this.selectedReserveUnit = null;
+		this.validMoves          = [];
 		this.boardRenderer.clearHighlights();
+		this.uiOverlay.clearReserveHighlight();
 	}
 
 	reset() {

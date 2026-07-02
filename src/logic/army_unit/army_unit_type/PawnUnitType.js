@@ -24,4 +24,16 @@ class PawnUnitType extends ArmyUnitType {
 	canBePromoted() {
 		return true;
 	}
+	
+	canBeRedeployed() {
+		return false;
+	}
+	
+	canCollectControlPoints() {
+		return false;
+	}
+	
+	canStopDoubleMove() {
+		return true;
+	}
 }

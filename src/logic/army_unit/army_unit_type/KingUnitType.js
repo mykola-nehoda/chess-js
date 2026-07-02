@@ -1,5 +1,6 @@
 
 
+
 class KingUnitType extends ArmyUnitType {
 	getName() {
 		return ArmyUnitTypeNames.KING_TYPE_NAME;
@@ -22,5 +23,13 @@ class KingUnitType extends ArmyUnitType {
 	
 	isGameCritical() {
 		return true;
+	}
+	
+	canBeRedeployed() {
+		return false;
+	}
+	
+	canCollectControlPoints() {
+		return false;
 	}
 }

@@ -26,7 +26,7 @@ class GameState {
 		
 		while( !unitWrapper.done ) {
 			let unit = unitWrapper.value;
-			this.players.get( unit.getAlignment() ).addUnit( unit );
+			this.players.get( unit.getAlignment() ).addActiveUnit( unit );
 			unitWrapper = unitIterator.next();
 		}
 	}
@@ -68,15 +68,21 @@ class GameState {
 		this.winner = this.getPlayer( alignment );
 	}
 	
+	deployUnit( unit, row, column ) {
+		const player = this.players.get( unit.getAlignment() );
+		player.removeUnitFromReserve( unit );
+		this.placeNewUnit( unit, row, column );
+	}
+	
 	placeNewUnit( newUnit, row, column ) {
 		const player = this.players.get( newUnit.getAlignment() );
-		player.addUnit( newUnit );
+		player.addActiveUnit( newUnit );
 		this.board.placeNewUnit( newUnit, row, column );
 	}
 	
-	removeUnit( unit ) {
+	removeUnitFromBoard( unit ) {
 		const player = this.players.get( unit.getAlignment() );
-		player.removeUnit( unit );
+		player.removeActiveUnit( unit );
 		this.board.removeUnit( unit );
 	}
 }

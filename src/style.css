@@ -64,7 +64,7 @@ html, body {
 		0 0 0 1px rgba(255, 255, 255, 0.04) inset,
 		0 1px 0 rgba(255, 255, 255, 0.08) inset;
 	min-width: 340px;
-	max-width: 420px;
+	max-width: 440px;
 	width: 90vw;
 }
 
@@ -152,6 +152,81 @@ html, body {
 	font-size: 11px;
 	color: rgba(200, 195, 185, 0.5);
 	font-weight: 400;
+}
+
+/* Color & Handicap Panel */
+
+#lobby-color-select {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	width: 100%;
+}
+
+.color-choice-row {
+	display: flex;
+	gap: 8px;
+	width: 100%;
+}
+
+.color-btn {
+	flex: 1;
+	padding: 12px 8px;
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	color: rgba(220, 215, 205, 0.65);
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.09);
+	border-radius: 12px;
+	cursor: pointer;
+	transition: all 0.22s ease;
+}
+
+.color-btn:hover {
+	background: rgba(200, 168, 80, 0.1);
+	border-color: rgba(200, 168, 80, 0.3);
+	color: #e8dcc8;
+}
+
+.color-btn.active {
+	background: rgba(200, 168, 80, 0.18);
+	border-color: rgba(200, 168, 80, 0.55);
+	color: #f0e6c8;
+	box-shadow: 0 0 12px rgba(200, 168, 80, 0.18);
+}
+
+.handicap-label {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 12px 14px;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 12px;
+	cursor: pointer;
+	font-size: 13px;
+	color: rgba(200, 195, 185, 0.75);
+	transition: background 0.2s;
+}
+
+.handicap-label:hover {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.handicap-label input[type="checkbox"] {
+	width: 16px;
+	height: 16px;
+	accent-color: #c8a850;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.handicap-sub {
+	opacity: 0.55;
+	font-size: 11px;
 }
 
 /* Online Sub-Panel */
@@ -352,17 +427,77 @@ html, body {
 	z-index: 10;
 }
 
-/* Turn Indicator */
+/* ─── Top HUD Bar ─── */
 
-#turn-indicator {
+#hud-top {
 	position: absolute;
 	top: 16px;
 	left: 50%;
 	transform: translateX(-50%);
 	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+}
+
+/* ─── VP Bar ─── */
+
+#vp-bar {
+	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 10px 28px;
+	padding: 7px 20px;
+	background: rgba(18, 18, 26, 0.72);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 40px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+	white-space: nowrap;
+}
+
+.vp-group {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.vp-white {
+	color: #e8dcc8;
+}
+
+.vp-black {
+	color: #b0a8c8;
+}
+
+.vp-icon {
+	font-size: 14px;
+	opacity: 0.7;
+}
+
+.vp-sep {
+	font-size: 10px;
+	font-weight: 400;
+	color: rgba(200, 195, 185, 0.3);
+	letter-spacing: 1px;
+}
+
+#vp-white, #vp-black {
+	font-family: 'Space Mono', monospace;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+}
+
+/* ─── Turn Indicator ─── */
+
+#turn-indicator {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 9px 24px;
 	background: rgba(18, 18, 26, 0.75);
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);
@@ -412,29 +547,107 @@ html, body {
 	color: rgba(200, 195, 185, 0.6);
 }
 
-/* Captured Pieces */
+/* ─── Reserve Panel ─── */
 
-#captured-panel {
+#reserve-panel {
 	position: absolute;
-	bottom: 16px;
+	bottom: 56px;  /* above the captured panel */
 	left: 50%;
 	transform: translateX(-50%);
 	display: flex;
-	gap: 16px;
+	gap: 12px;
+	pointer-events: auto;
+}
+
+.reserve-side {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 14px 10px;
+	background: rgba(18, 18, 26, 0.72);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 16px;
+	min-width: 100px;
+}
+
+.reserve-label {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.8px;
+	text-transform: uppercase;
+	color: rgba(200, 195, 185, 0.45);
+}
+
+.reserve-pieces {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+	justify-content: center;
+	min-height: 34px;
+	align-items: center;
+}
+
+.reserve-empty {
+	font-size: 16px;
+	color: rgba(200, 195, 185, 0.2);
+}
+
+.reserve-piece {
+	font-size: 24px;
+	padding: 4px 6px;
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	color: inherit;
+	cursor: default;
+	transition: all 0.2s ease;
+	line-height: 1;
+}
+
+.reserve-piece-active {
+	cursor: pointer;
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+.reserve-piece-active:hover {
+	background: rgba(200, 168, 80, 0.15);
+	border-color: rgba(200, 168, 80, 0.4);
+	transform: scale(1.15) translateY(-2px);
+	box-shadow: 0 4px 12px rgba(200, 168, 80, 0.2);
+}
+
+.reserve-piece-selected {
+	background: rgba(40, 120, 255, 0.2);
+	border-color: rgba(80, 140, 255, 0.6);
+	box-shadow: 0 0 10px rgba(80, 140, 255, 0.3);
+}
+
+/* ─── Captured Pieces ─── */
+
+#captured-panel {
+	position: absolute;
+	bottom: 14px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	gap: 12px;
 }
 
 .captured-group {
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	padding: 6px 14px;
-	background: rgba(18, 18, 26, 0.6);
+	padding: 5px 12px;
+	background: rgba(18, 18, 26, 0.5);
 	backdrop-filter: blur(12px);
 	-webkit-backdrop-filter: blur(12px);
-	border: 1px solid rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.05);
 	border-radius: 20px;
-	min-height: 34px;
-	min-width: 50px;
+	min-height: 30px;
+	min-width: 44px;
 }
 
 .captured-label {
@@ -442,14 +655,14 @@ html, body {
 	font-weight: 500;
 	text-transform: uppercase;
 	letter-spacing: 1px;
-	color: rgba(200, 195, 185, 0.4);
+	color: rgba(200, 195, 185, 0.3);
 	margin-right: 2px;
 }
 
 .captured-pieces { display: flex; gap: 1px; flex-wrap: wrap; }
-.captured-piece  { font-size: 16px; opacity: 0.8; }
+.captured-piece  { font-size: 14px; opacity: 0.65; }
 
-/* Game Over Panel */
+/* ─── Game Over Panel ─── */
 
 #game-over-panel {
 	position: absolute;
@@ -634,14 +847,21 @@ html, body {
 
 	.lobby-title h1 { font-size: 26px; }
 
-	#turn-indicator { top: 10px; padding: 8px 20px; }
+	#hud-top { top: 8px; gap: 6px; }
+	#turn-indicator { padding: 7px 18px; }
 	#turn-text { font-size: 12px; }
 	#turn-number { font-size: 10px; }
 	.player-dot { width: 12px; height: 12px; }
+	#vp-bar { padding: 5px 14px; }
+	.vp-group { font-size: 12px; }
+
+	#reserve-panel { bottom: 46px; gap: 8px; }
+	.reserve-side { padding: 6px 10px 8px; min-width: 80px; }
+	.reserve-piece { font-size: 20px; }
 
 	#captured-panel { bottom: 10px; gap: 8px; }
 	.captured-group { padding: 4px 10px; }
-	.captured-piece { font-size: 14px; }
+	.captured-piece { font-size: 12px; }
 
 	#game-over-panel { padding: 28px 36px; }
 	#game-over-text { font-size: 24px; }
@@ -656,10 +876,16 @@ html, body {
 	.lobby-title h1 { font-size: 22px; }
 	#room-code-display { font-size: 28px; letter-spacing: 6px; }
 
-	#turn-indicator { top: 6px; padding: 6px 14px; }
+	#hud-top { top: 4px; gap: 4px; }
+	#turn-indicator { padding: 6px 14px; }
 	#turn-text { font-size: 11px; }
 
-	#captured-panel { flex-direction: column; align-items: center; gap: 6px; bottom: 6px; }
+	.color-choice-row { flex-direction: column; }
+
+	#reserve-panel { flex-direction: row; bottom: 42px; }
+	.reserve-side { min-width: 70px; }
+
+	#captured-panel { flex-direction: column; align-items: center; gap: 4px; bottom: 4px; }
 	#game-over-panel { padding: 22px 28px; }
 	#disconnect-inner { padding: 20px 24px; }
 }
