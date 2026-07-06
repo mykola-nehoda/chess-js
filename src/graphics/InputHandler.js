@@ -242,11 +242,27 @@ class InputHandler {
 		this.selectedUnit        = null;
 		this.selectedReserveUnit = null;
 		this.validMoves          = [];
-		await this._runDeploySequence( unit, destRow, destCol );
+		await this._runDeploySequence( unit, destRow, destCol, true );
 	}
 
-	async _runDeploySequence( unit, destRow, destCol ) {
+	async applyRemoteDeploy( unitId, destRow, destCol ) {
+		if ( !this.unitRegistry ) return;
+		const unit = this.unitRegistry.getUnit( unitId );
+		if ( !unit ) {
+			console.error( "applyRemoteDeploy: unknown unitId", unitId );
+			return;
+		}
+		await this._runDeploySequence( unit, destRow, destCol, false );
+	}
+
+	async _runDeploySequence( unit, destRow, destCol, isLocal ) {
 		this.boardRenderer.clearHighlights();
+
+		// Send to network before executing so the opponent gets it fast
+		if ( isLocal && this.networkClient && this.unitRegistry ) {
+			const uid = this.unitRegistry.getId( unit );
+			if ( uid ) this.networkClient.sendDeploy( uid, destRow, destCol );
+		}
 
 		// Execute the logic (removes from reserve, places on board, sets weakness)
 		this.gameManager.executeDeploy( unit, destRow, destCol );

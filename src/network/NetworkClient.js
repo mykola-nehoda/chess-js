@@ -14,6 +14,7 @@ class NetworkClient {
 		this.onRoomCreated = null;
 		this.onGameStart = null;
 		this.onOpponentMove = null;
+		this.onOpponentDeploy = null;
 		this.onOpponentDisconnected = null;
 		this.onOpponentReconnected = null;
 		this.onOpponentGaveUp = null;
@@ -49,6 +50,10 @@ class NetworkClient {
 
 	sendMove( unitId, destRow, destCol ) {
 		this._send( { type: "move", unitId, destRow, destCol } );
+	}
+
+	sendDeploy( unitId, destRow, destCol ) {
+		this._send( { type: "deploy", unitId, destRow, destCol } );
 	}
 
 	giveUp() {
@@ -107,6 +112,12 @@ class NetworkClient {
 			case "move":
 				if ( this.onOpponentMove ) {
 					this.onOpponentMove( msg.unitId, msg.destRow, msg.destCol );
+				}
+				break;
+
+			case "deploy":
+				if ( this.onOpponentDeploy ) {
+					this.onOpponentDeploy( msg.unitId, msg.destRow, msg.destCol );
 				}
 				break;
 

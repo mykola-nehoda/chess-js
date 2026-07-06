@@ -132,6 +132,19 @@ function handleMove( ws, msg ) {
 	});
 }
 
+function handleDeploy( ws, msg ) {
+	const room = rooms.get( ws.roomCode );
+	if ( !room ) return;
+
+	const opponent = getOpponent( room, ws.playerIndex );
+	send( opponent, {
+		type: "deploy",
+		unitId: msg.unitId,
+		destRow: msg.destRow,
+		destCol: msg.destCol,
+	});
+}
+
 function handleGiveUp( ws ) {
 	const room = rooms.get( ws.roomCode );
 	if ( !room ) return;
@@ -187,6 +200,7 @@ wss.on( "connection", ( ws ) => {
 			case "join-room":     handleJoinRoom( ws, msg );    break;
 			case "reconnect":     handleReconnect( ws, msg );   break;
 			case "move":          handleMove( ws, msg );        break;
+			case "deploy":        handleDeploy( ws, msg );      break;
 			case "give-up":       handleGiveUp( ws );           break;
 		}
 	});

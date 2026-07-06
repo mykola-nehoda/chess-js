@@ -255,6 +255,12 @@ class ChessApp {
 			}
 		};
 
+		this.networkClient.onOpponentDeploy = ( unitId, destRow, destCol ) => {
+			if ( this.inputHandler ) {
+				this.inputHandler.applyRemoteDeploy( unitId, destRow, destCol );
+			}
+		};
+
 		this.networkClient.onOpponentDisconnected = () => {
 			this.uiOverlay.showDisconnected( 60 );
 		};
