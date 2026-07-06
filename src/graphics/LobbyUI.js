@@ -45,7 +45,8 @@ class LobbyUI {
 		});
 
 		document.getElementById( "btn-online-game" ).addEventListener( "click", () => {
-			this._showPanel( this.panelOnline );
+			this._pendingOnline = true;
+			this._showPanel( this.panelColor );
 			this.clearError();
 		});
 
@@ -66,15 +67,18 @@ class LobbyUI {
 			});
 		}
 
-		// Start with options (local game)
+		// Start with options button — local OR proceed to online sub-panel
 		document.getElementById( "btn-start-with-options" ).addEventListener( "click", () => {
-			if ( !this._pendingOnline ) {
+			if ( this._pendingOnline ) {
+				this._showPanel( this.panelOnline );
+			} else {
 				if ( this.onLocalGame ) this.onLocalGame();
 			}
 		});
 
-		// Back from color panel
+		// Back from color panel — go back to mode select
 		document.getElementById( "btn-back-color" ).addEventListener( "click", () => {
+			this._pendingOnline = false;
 			this._showPanel( this.panelMode );
 			this.clearError();
 		});
@@ -106,7 +110,13 @@ class LobbyUI {
 		});
 
 		document.getElementById( "btn-back-online" ).addEventListener( "click", () => {
-			this._showPanel( this.panelMode );
+			// If we came from the color panel (online flow), go back there;
+			// otherwise go back to mode select.
+			if ( this._pendingOnline ) {
+				this._showPanel( this.panelColor );
+			} else {
+				this._showPanel( this.panelMode );
+			}
 			this.clearError();
 			this.codeInput.value = "";
 		});

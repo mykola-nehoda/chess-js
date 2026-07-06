@@ -37,8 +37,25 @@ class ChessApp {
 		this._wireLobbyCallbacks();
 		this._wireUICallbacks();
 
+		// Compute initial layout (side vs compact) and update on every resize
+		this._updateLayout();
+		window.addEventListener( "resize", () => this._updateLayout() );
+
 		this.lobbyUI.show();
 		this.chessScene.startRenderLoop();
+	}
+
+	// ─── Layout (side vs compact panels) ─────────────────────────
+
+	_updateLayout() {
+		const MIN_SIDE_PX = 190; // minimum side-space to show panels beside board
+		const sideSpacePx = this.chessScene.getBoardSideSpacePx();
+		document.documentElement.style.setProperty(
+			'--side-space-px',
+			sideSpacePx + 'px',
+		);
+		document.body.classList.toggle( 'layout-side',    sideSpacePx >= MIN_SIDE_PX );
+		document.body.classList.toggle( 'layout-compact', sideSpacePx <  MIN_SIDE_PX );
 	}
 
 	// ─── Lobby callbacks ──────────────────────────────────────────
@@ -142,6 +159,11 @@ class ChessApp {
 		const viewAlignment = localAlignment !== null ? localAlignment : "First Player";
 		this.chessScene.setCameraForAlignment( viewAlignment );
 
+		// Flip piece and label orientations for Black's camera perspective.
+		const isFlipped = ( viewAlignment === "Second Player" );
+		this.boardRenderer.setFlipped( isFlipped );
+		this.pieceRenderer.setFlipped( isFlipped );
+
 		if ( this.inputHandler ) {
 			this.inputHandler.reset();
 			this.inputHandler = null;
@@ -198,7 +220,15 @@ class ChessApp {
 
 	_startOnlineGame( alignmentString ) {
 		this.isOnlineGame = true;
-		this.startNewGame( alignmentString );
+		// Read handicap preference that was set during the online lobby color-selection step
+		const handicapEnabled = this.lobbyUI.isHandicapEnabled();
+		let handicapAlignment = null;
+		if ( handicapEnabled ) {
+			handicapAlignment = ( alignmentString === "First Player" )
+				? Alignment.FirstPlayer
+				: Alignment.SecondPlayer;
+		}
+		this.startNewGame( alignmentString, handicapAlignment );
 	}
 
 	_spawnAllPieces() {

@@ -4,7 +4,8 @@ class PieceRenderer {
 		this.scene = scene;
 		this.unitToMeshMap    = new Map();
 		this.meshToUnitMap    = new Map();
-		this.weaknessMeshMap  = new Map(); // unit → weakness-counter plane
+		this.weaknessMeshMap  = new Map();
+		this.flipped = false;
 
 		this.pieceSymbols = {};
 		this.pieceSymbols[ ArmyUnitTypeNames.KING_TYPE_NAME ]   = { white: "\u2654", black: "\u265A" };
@@ -81,8 +82,9 @@ class PieceRenderer {
 			{ size: 0.88 },
 			this.scene,
 		);
-		plane.position = new BABYLON.Vector3( col, 0.03, row );
+		plane.position  = new BABYLON.Vector3( col, 0.03, row );
 		plane.rotation.x = Math.PI / 2;
+		plane.rotation.y = this.flipped ? Math.PI : 0;
 
 		const tex = this.createPieceTexture( unit );
 
@@ -216,6 +218,7 @@ class PieceRenderer {
 		const plane = BABYLON.MeshBuilder.CreatePlane( name, { size: 0.30 }, this.scene );
 		plane.position  = new BABYLON.Vector3( col + 0.32, 0.08, row + 0.32 );
 		plane.rotation.x = Math.PI / 2;
+		plane.rotation.y = this.flipped ? Math.PI : 0;
 
 		const mat = new BABYLON.StandardMaterial( name + "_mat", this.scene );
 		mat.diffuseTexture   = tex;
@@ -236,5 +239,14 @@ class PieceRenderer {
 			mesh.dispose();
 			this.weaknessMeshMap.delete( unit );
 		}
+	}
+
+	// ─── Flip for Black’s perspective ────────────────────────────
+
+	setFlipped( flipped ) {
+		this.flipped = flipped;
+		const rotY = flipped ? Math.PI : 0;
+		for ( const [ , mesh ] of this.unitToMeshMap )   mesh.rotation.y = rotY;
+		for ( const [ , mesh ] of this.weaknessMeshMap ) mesh.rotation.y = rotY;
 	}
 }

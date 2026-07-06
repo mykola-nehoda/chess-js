@@ -93,6 +93,26 @@ class ChessScene {
 		});
 	}
 
+	// Returns how many pixels are available on each side of the board.
+	// Uses the same ortho formula as updateOrthoSize().
+	getBoardSideSpacePx() {
+		const w      = window.innerWidth;
+		const h      = window.innerHeight;
+		const aspect = w / h;
+		const halfSize = 4.8;
+
+		let visUnitsWide;
+		if ( aspect >= 1 ) {
+			visUnitsWide = halfSize * 2 * aspect;
+		} else {
+			visUnitsWide = halfSize * 2;
+		}
+
+		const pxPerUnit   = w / visUnitsWide;
+		const boardWidthPx = 8 * pxPerUnit;
+		return Math.floor( ( w - boardWidthPx ) / 2 );
+	}
+
 	getScene() {
 		return this.scene;
 	}

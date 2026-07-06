@@ -1,4 +1,3 @@
-
 class UIOverlay {
 	constructor() {
 		this.turnText       = document.getElementById( "turn-text" );
@@ -10,9 +9,12 @@ class UIOverlay {
 		this.disconnectPanel = document.getElementById( "disconnect-panel-overlay" );
 		this.disconnectTimer = document.getElementById( "disconnect-timer" );
 
-		// Reserve panels
+		// Reserve panel + toggle
+		this.reservePanel   = document.getElementById( "reserve-panel" );
 		this.reserveWhite   = document.getElementById( "reserve-white" );
 		this.reserveBlack   = document.getElementById( "reserve-black" );
+		this.reserveToggleBtn = document.getElementById( "reserve-toggle-btn" );
+		this.reserveBadge   = document.getElementById( "reserve-badge" );
 
 		// Victory point elements
 		this.vpWhite        = document.getElementById( "vp-white" );
@@ -40,6 +42,7 @@ class UIOverlay {
 		this._selectedReserveEl   = null;
 
 		this._setupButtons();
+		this._setupReserveToggle();
 	}
 
 	_setupButtons() {
@@ -52,7 +55,38 @@ class UIOverlay {
 		});
 	}
 
-	// ─── Turn indicator ───────────────────────────────────────────
+	// ─── Reserve Toggle (compact mode) ────────────────────────────
+
+	_setupReserveToggle() {
+		if ( !this.reserveToggleBtn || !this.reservePanel ) return;
+
+		this.reserveToggleBtn.addEventListener( "click", ( e ) => {
+			e.stopPropagation();
+			const open = this.reservePanel.classList.toggle( "panel-open" );
+			this.reserveToggleBtn.classList.toggle( "active", open );
+		});
+
+		// Close when clicking outside the panel or toggle button
+		document.addEventListener( "click", ( e ) => {
+			if (
+				this.reservePanel.classList.contains( "panel-open" ) &&
+				!this.reservePanel.contains( e.target ) &&
+				e.target !== this.reserveToggleBtn
+			) {
+				this.reservePanel.classList.remove( "panel-open" );
+				this.reserveToggleBtn.classList.remove( "active" );
+			}
+		});
+	}
+
+	updateReserveBadge( gameState ) {
+		if ( !this.reserveBadge ) return;
+		const p1 = gameState.getPlayer( Alignment.FirstPlayer ).getReserveSize();
+		const p2 = gameState.getPlayer( Alignment.SecondPlayer ).getReserveSize();
+		const total = p1 + p2;
+		this.reserveBadge.textContent = total > 0 ? String( total ) : "";
+	}
+
 
 	updateTurnIndicator( alignment, turnNumber ) {
 		const isFirst = ( alignment === Alignment.FirstPlayer );
@@ -89,6 +123,9 @@ class UIOverlay {
 			Alignment.SecondPlayer,
 			activeAlign,
 		);
+
+		// Keep the compact-mode toggle badge in sync
+		this.updateReserveBadge( gameState );
 	}
 
 	_renderReserveSide( container, player, alignment, activeAlignment ) {

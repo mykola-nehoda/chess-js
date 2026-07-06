@@ -549,14 +549,19 @@ html, body {
 
 /* ─── Reserve Panel ─── */
 
+/* Base: hidden off-screen to avoid flash of overlap;
+   layout-side and layout-compact override below */
 #reserve-panel {
 	position: absolute;
-	bottom: 56px;  /* above the captured panel */
+	bottom: -100vh;
 	left: 50%;
 	transform: translateX(-50%);
 	display: flex;
 	gap: 12px;
-	pointer-events: auto;
+	pointer-events: none;
+	transition: bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+	            opacity 0.25s ease;
+	opacity: 0;
 }
 
 .reserve-side {
@@ -629,11 +634,12 @@ html, body {
 
 #captured-panel {
 	position: absolute;
-	bottom: 14px;
+	bottom: -100vh;
 	left: 50%;
 	transform: translateX(-50%);
 	display: flex;
 	gap: 12px;
+	pointer-events: none;
 }
 
 .captured-group {
@@ -838,6 +844,135 @@ html, body {
    RESPONSIVE
 ═══════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════
+   PANEL LAYOUT SYSTEM
+   body.layout-side   → enough horizontal margin beside board
+   body.layout-compact → not enough margin, panels behind toggle
+══════════════════════════════════════════════ */
+
+/* ─ SIDE MODE: panels visible on left / right of the board ─ */
+
+body.layout-side #reserve-panel {
+	position: fixed;
+	left: 4px;
+	top: 50%;
+	bottom: auto;
+	transform: translateY(-50%);
+	flex-direction: column;
+	width: calc( var(--side-space-px, 200px) - 12px );
+	max-width: 236px;
+	max-height: 80vh;
+	overflow-y: auto;
+	gap: 8px;
+	pointer-events: auto;
+	opacity: 1;
+}
+
+body.layout-side #captured-panel {
+	position: fixed;
+	right: 4px;
+	top: 50%;
+	bottom: auto;
+	left: auto;
+	transform: translateY(-50%);
+	flex-direction: column;
+	width: calc( var(--side-space-px, 200px) - 12px );
+	max-width: 236px;
+	gap: 8px;
+	pointer-events: none;
+	opacity: 1;
+}
+
+body.layout-side .reserve-side   { min-width: 0; width: 100%; }
+body.layout-side .captured-group { min-width: 0; width: 100%; }
+
+body.layout-side .reserve-toggle-btn { display: none; }
+
+/* ─ COMPACT MODE: panels hidden, toggle button shows them ─ */
+
+body.layout-compact #reserve-panel {
+	bottom: -100vh;
+	opacity: 0;
+	pointer-events: none;
+	flex-direction: row;
+}
+
+body.layout-compact #reserve-panel.panel-open {
+	bottom: 52px;
+	opacity: 1;
+	pointer-events: auto;
+}
+
+body.layout-compact #captured-panel {
+	display: none;
+}
+
+/* ─ Reserve Toggle Button ─ */
+
+.reserve-toggle-btn {
+	position: absolute;
+	bottom: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: none;  /* shown only in layout-compact */
+	align-items: center;
+	gap: 7px;
+	padding: 8px 20px;
+	background: rgba(18, 18, 26, 0.85);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 50px;
+	box-shadow:
+		0 4px 20px rgba(0, 0, 0, 0.4),
+		inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	font-family: 'Inter', sans-serif;
+	font-size: 13px;
+	font-weight: 600;
+	color: rgba(200, 195, 185, 0.75);
+	cursor: pointer;
+	transition: all 0.25s ease;
+	pointer-events: auto;
+	z-index: 20;
+	white-space: nowrap;
+}
+
+.reserve-toggle-btn:hover {
+	background: rgba(200, 168, 80, 0.12);
+	border-color: rgba(200, 168, 80, 0.3);
+	color: #e8dcc8;
+	transform: translateX(-50%) translateY(-2px);
+}
+
+.reserve-toggle-btn.active {
+	background: rgba(200, 168, 80, 0.18);
+	border-color: rgba(200, 168, 80, 0.5);
+	color: #f0e6c8;
+}
+
+body.layout-compact .reserve-toggle-btn { display: flex; }
+
+.reserve-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
+	background: rgba(200, 168, 80, 0.9);
+	color: #0d0d14;
+	border-radius: 9px;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.reserve-badge:empty { display: none; }
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
 	#lobby-panel {
 		padding: 32px 28px;
@@ -855,13 +990,8 @@ html, body {
 	#vp-bar { padding: 5px 14px; }
 	.vp-group { font-size: 12px; }
 
-	#reserve-panel { bottom: 46px; gap: 8px; }
-	.reserve-side { padding: 6px 10px 8px; min-width: 80px; }
+	body.layout-compact .reserve-side { padding: 6px 10px 8px; min-width: 80px; }
 	.reserve-piece { font-size: 20px; }
-
-	#captured-panel { bottom: 10px; gap: 8px; }
-	.captured-group { padding: 4px 10px; }
-	.captured-piece { font-size: 12px; }
 
 	#game-over-panel { padding: 28px 36px; }
 	#game-over-text { font-size: 24px; }
@@ -881,11 +1011,8 @@ html, body {
 	#turn-text { font-size: 11px; }
 
 	.color-choice-row { flex-direction: column; }
+	body.layout-compact #reserve-panel.panel-open { flex-direction: column; }
 
-	#reserve-panel { flex-direction: row; bottom: 42px; }
-	.reserve-side { min-width: 70px; }
-
-	#captured-panel { flex-direction: column; align-items: center; gap: 4px; bottom: 4px; }
 	#game-over-panel { padding: 22px 28px; }
 	#disconnect-inner { padding: 20px 24px; }
 }

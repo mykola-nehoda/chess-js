@@ -6,6 +6,8 @@ class BoardRenderer {
 		this.squareMeshes = [];
 		this.highlightMeshes = [];
 		this.cpFlagMeshes = [];
+		this.labelMeshes  = [];
+		this.flipped = false;
 
 		this.lightColor = new BABYLON.Color3( 0.94, 0.85, 0.71 );
 		this.darkColor  = new BABYLON.Color3( 0.71, 0.53, 0.39 );
@@ -130,6 +132,9 @@ class BoardRenderer {
 		mat.disableLighting = true;
 		plane.material = mat;
 		plane.isPickable = false;
+
+		plane.rotation.y = this.flipped ? Math.PI : 0;
+		this.labelMeshes.push( plane );
 	}
 
 	// ─── CP Flag Visualization ────────────────────────────────────
@@ -205,7 +210,17 @@ class BoardRenderer {
 		plane.material  = mat;
 		plane.isPickable = false;
 
+		plane.rotation.y = this.flipped ? Math.PI : 0;
 		this.cpFlagMeshes.push( plane );
+	}
+
+	// ─── Flip for Black's perspective ────────────────────────────
+
+	setFlipped( flipped ) {
+		this.flipped = flipped;
+		const rotY = flipped ? Math.PI : 0;
+		for ( const m of this.labelMeshes )  m.rotation.y = rotY;
+		for ( const m of this.cpFlagMeshes ) m.rotation.y = rotY;
 	}
 
 	// ─── Highlights ───────────────────────────────────────────────
