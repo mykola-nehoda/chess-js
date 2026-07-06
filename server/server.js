@@ -136,6 +136,8 @@ function handleDeploy( ws, msg ) {
 	const room = rooms.get( ws.roomCode );
 	if ( !room ) return;
 
+	console.log( `Deploy in room ${ ws.roomCode }: unit=${ msg.unitId } dest=(${ msg.destRow },${ msg.destCol })` );
+
 	const opponent = getOpponent( room, ws.playerIndex );
 	send( opponent, {
 		type: "deploy",

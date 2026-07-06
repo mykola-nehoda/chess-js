@@ -169,18 +169,6 @@ class GameManager {
 		this.updateAvailableActions();
 	}
 
-	// Used by the remote client: the unit is not in the local reserve,
-	// so we skip removeUnitFromReserve and place it directly.
-	executeRemoteDeploy( unit, destinationRow, destinationColumn ) {
-		this.gameState.placeNewUnit( unit, destinationRow, destinationColumn );
-		unit.setWeaknessCounter( GameManager.POST_DEPLOYMENT_WEAKNESS_COUNTER );
-
-		if ( !this.gameState.isWinnerDecided() )
-			this.passTurn();
-
-		this.updateAvailableActions();
-	}
-
 	
 	// ─── Unit Management ──────────────────────────────────────────
 	
