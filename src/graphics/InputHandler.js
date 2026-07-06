@@ -252,8 +252,24 @@ class InputHandler {
 			console.error( "applyRemoteDeploy: unknown unitId", unitId );
 			return;
 		}
-		await this._runDeploySequence( unit, destRow, destCol, false );
+
+		this.boardRenderer.clearHighlights();
+
+		// The unit is not in the local reserve on the opponent's client,
+		// so we use executeRemoteDeploy which places it directly on the board.
+		this.gameManager.executeRemoteDeploy( unit, destRow, destCol );
+
+		const mesh = this.pieceRenderer.createPieceForUnit( unit, destRow, destCol );
+		if ( mesh ) {
+			this.animationManager.animatePromotion( mesh );
+		}
+
+		this.boardRenderer.highlightLastMove( destRow, destCol, destRow, destCol );
+
+		this.syncBoardState();
+		this._afterAction();
 	}
+
 
 	async _runDeploySequence( unit, destRow, destCol, isLocal ) {
 		this.boardRenderer.clearHighlights();
