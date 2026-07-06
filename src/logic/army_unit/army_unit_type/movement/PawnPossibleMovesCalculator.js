@@ -32,8 +32,8 @@ class PawnPossibleMovesCalculator {
 		if ( startRow === this.getRowForDoubleMove( board, alignment ) ) {
 			const doubleMoveRow = startRow + ( 2 * moveDirection );
 			if (
-					!this.checkForDoubleMoveStopper( board, doubleMoveRow, startCol - 1 )
-				&&	!this.checkForDoubleMoveStopper( board, doubleMoveRow, startCol + 1 )
+					!this.checkForDoubleMoveStopper( board, doubleMoveRow, startCol - 1, alignment )
+				&&	!this.checkForDoubleMoveStopper( board, doubleMoveRow, startCol + 1, alignment )
 			) {
 				this.tryMove( board, doubleMoveRow, startCol, targetSet );
 			}
@@ -77,6 +77,7 @@ class PawnPossibleMovesCalculator {
 		board,
 		row,
 		col,
+		movingUnitAlignment,
 	) {
 		if ( !board.isWithin( row, col ) )
 			return false;
@@ -84,6 +85,9 @@ class PawnPossibleMovesCalculator {
 		if ( !cell.containsUnit() )
 			return false;
 		const metUnit = cell.getUnit();
-		return metUnit.getType().canStopDoubleMove();
+		return (
+				( metUnit.getAlignment() !== movingUnitAlignment )
+			&&	( metUnit.getType().canStopDoubleMove() )
+		);
 	}
 }
