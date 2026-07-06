@@ -9,22 +9,41 @@ class UnitIdRegistry {
 		this.idToUnit = new Map();
 	}
 
-	// Call once at game start with the initial board.
-	registerAll( board ) {
+	// Call once at game start with the initial game state.
+	// Board units are keyed by their starting coordinate. Units that start in the
+	// reserve (e.g. the starting knight) never touch the board, so they are keyed
+	// by a reserve-scoped id instead — both clients build identical starting
+	// reserves, so these ids line up across the network.
+	registerAll( gameState ) {
 		this.unitToId.clear();
 		this.idToUnit.clear();
 
+		const board = gameState.getBoard();
 		const iter = board.getUnits();
 		let w = iter.next();
 
 		while ( !w.done ) {
 			const unit = w.value;
 			const coord = board.getCoordinateOfUnit( unit );
-			const id = "r" + coord.getRow() + "c" + coord.getColumn();
-			this.unitToId.set( unit, id );
-			this.idToUnit.set( id, unit );
+			this._assignId( unit, "r" + coord.getRow() + "c" + coord.getColumn() );
 			w = iter.next();
 		}
+
+		for ( const alignment of [ Alignment.FirstPlayer, Alignment.SecondPlayer ] ) {
+			const reserveIter = gameState.getPlayer( alignment ).getReservedUnits();
+			let idx = 0;
+			let rw = reserveIter.next();
+			while ( !rw.done ) {
+				this._assignId( rw.value, "reserve-" + alignment.name + "-" + idx );
+				idx++;
+				rw = reserveIter.next();
+			}
+		}
+	}
+
+	_assignId( unit, id ) {
+		this.unitToId.set( unit, id );
+		this.idToUnit.set( id, unit );
 	}
 
 	getId( unit ) {

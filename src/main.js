@@ -191,7 +191,7 @@ class ChessApp {
 
 		// Register unit IDs for network play
 		if ( localAlignment !== null ) {
-			this.unitRegistry.registerAll( this.gameManager.getGameState().getBoard() );
+			this.unitRegistry.registerAll( this.gameManager.getGameState() );
 		} else {
 			this.unitRegistry.clear();
 		}
